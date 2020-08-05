@@ -1,8 +1,8 @@
 from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from .models import MediaFile, ForumPost, ForumPostReplyForm
-from .forms import MediaUploadForm, PostSearchForm
+from .models import ForumPost, ForumPostForm, ForumPostReplyForm
+from .forms import PostSearchForm
 
 
 def forum_post(request, post_id):
@@ -53,52 +53,18 @@ def index(request):
     return render(request, 'forum/index.html', context)
 
 
-def enter_media(requestObj):
-    """ Helper for upload_post(), process media uploads for post creation """
-    video_extensions = (
-        '.mpeg',
-        '.mp4',
-        '.mov'
-    )
-    uploadedFile = requestObj.FILES['media_file']
-
-    media_entry = MediaFile.objects.create(
-        data=uploadedFile,
-        is_video=uploadedFile.name.endswith(video_extensions)
-    )
-    media_entry.save()
-
-    return media_entry
-
-
-def remove_excess_fields(requestPOST, fieldClass):
-    post_copy = dict(requestPOST)
-    for key in requestPOST:
-        if key not in fieldClass.__dict__:
-            del post_copy[key]
-
-    return post_copy
-
-
 def upload_post(request):
     if request.method == "POST":
-        form = MediaUploadForm(request.POST, request.FILES)
+        form = ForumPostForm(request.POST, request.FILES)
+        latest = ForumPost.objects.order_by('id').last()
         if form.is_valid():
-            media_entry = enter_media(request)
-            post_params = remove_excess_fields(request.POST, ForumPost)
+            return HttpResponseRedirect(f'/forum/{latest.id}?page=-1')
 
-            entry = ForumPost.objects.create(media_file=media_entry, **post_params)
-            entry.save()
-
-            if ForumPost.objects.get(pk=entry.id):
-                return HttpResponseRedirect(f'/forum/{entry.id}?page=-1')
-            else:
-                return HttpResponseRedirect('/')
         else:
             return render(request, 'forum/upload_error.html', {'errors': form.errors})
 
     else:
-        return render(request, 'forum/upload.html', {'upload_form': MediaUploadForm()})
+        return render(request, 'forum/upload.html', {'upload_form': ForumPostForm()})
 
 
 def search_posts(request):

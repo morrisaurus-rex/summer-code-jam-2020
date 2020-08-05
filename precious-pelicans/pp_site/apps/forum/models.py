@@ -2,20 +2,14 @@ from django import forms
 from django.forms import Textarea
 from django.db import models
 
-
 from pp_site.utils.models import TimeStampMixin
-
-
-class MediaFile(models.Model):
-    data = models.FileField()
-    is_video = models.BooleanField()
 
 
 class ForumPost(TimeStampMixin):
     title = models.CharField(max_length=100)
     author = models.CharField(max_length=30)
     description = models.TextField(blank=False)
-    media_file = models.ForeignKey(MediaFile, on_delete=models.CASCADE, blank=True, null=True)
+    media_file = models.FileField()
     rating = models.IntegerField(default=0)
 
     @staticmethod
