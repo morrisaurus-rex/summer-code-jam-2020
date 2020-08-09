@@ -2,7 +2,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Q
-from .models import ForumPost, ForumPostReplyForm, ForumPostForm
+from .models import ForumPost, ForumPostReplyForm, ForumPostForm, ForumMedia
 from .forms import PostSearchForm
 import shlex
 import re
@@ -17,11 +17,10 @@ def forum_post(request, post_id):
     page_number = request.GET.get('page', 1)
     page_obj = pages.get_page(page_number)
 
-    print(post.author)
     context = {
         'original_post': post,
         'reply_form': ForumPostReplyForm,
-        'page_obj': page_obj
+        'page_obj': page_obj,
     }
 
     return render(request, 'forum/forum_post.html', context)
@@ -44,7 +43,9 @@ def forum_post_reply(request, post_id):
 
 
 def index(request):
-    # TODO: confirm if dates in descending order mean newest first
+    if ForumPost.objects.count() == 0:
+        return render(request, 'forum/indexempty.html')
+
     post_list = ForumPost.objects.order_by('-created_at')
     context = {
         'post_list': post_list,
@@ -55,11 +56,18 @@ def index(request):
     return render(request, 'forum/index.html', context)
 
 
+def get_file_ext(uploaded_file):
+    return uploaded_file.name.split('.')[-1]
+
+
 def upload_post(request):
     if request.method == "POST":
         form = ForumPostForm(request.POST, request.FILES)
         if form.is_valid():
             saved_post = form.save()
+            if get_file_ext(request.FILES["media_file"]) in ForumMedia.video_types:
+                saved_post.is_video = True
+                saved_post.save()
 
             return HttpResponseRedirect(f'/forum/{saved_post.id}')
         return render(request, 'forum/upload_error.html', {'errors': form.errors})
